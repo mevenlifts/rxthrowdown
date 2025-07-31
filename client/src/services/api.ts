@@ -1,0 +1,47 @@
+export async function getUserProfile(token: string) {
+  console.log("token:", token);
+  if (!token) throw new Error('No token provided');
+  const res = await fetch('/api/user/me', {
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error('Failed to fetch user profile');
+  return res.json();
+}
+
+export async function updateUserProfile(data: { homeGym?: string; birthdate?: string; first_name?: string; last_name?: string }, token: string) {
+  const res = await fetch('/api/user/me', {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Failed to update profile');
+  return res.json();
+}
+export async function signupUser(data: {
+  first_name: string;
+  last_name: string;
+  email: string;
+  password: string;
+}) {
+  const res = await fetch('/api/auth/signup', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Signup failed');
+  return res.json();
+}
+
+export async function loginUser(data: { email: string; password: string }) {
+  const res = await fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  const result = await res.json();
+  if (!res.ok) throw new Error(result.message || 'Login failed');
+  return result;
+}
