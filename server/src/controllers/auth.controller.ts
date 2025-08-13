@@ -7,7 +7,10 @@ import { AuthRequest } from '../middleware/auth.middleware';
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 
 export const signup = async (req: Request, res: Response) => {
-  const { firstName, lastName, email, password } = req.body;
+  // Accept both camelCase and snake_case for compatibility
+  const firstName = req.body.firstName || req.body.first_name;
+  const lastName = req.body.lastName || req.body.last_name;
+  const { email, password } = req.body;
   try {
     const existing = await User.findOne({ email });
     if (existing) return res.status(400).json({ message: 'Email already in use' });
@@ -35,17 +38,18 @@ export const login = async (req: Request, res: Response) => {
     const user = await User.findOne({ email });
     if (!user) {
       console.log(`[LOGIN FAIL] Email: ${email} - User not found`);
-      return res.status(400).json({ message: 'Invalid credentials' });
+      return res.status(400).json({ message: 'Invalid credentials email' });
     }
 
     if (!user.password) {
       console.log(`[LOGIN FAIL] Email: ${email} - No password set`);
       return res.status(400).json({ message: 'User has no password set' });
     }
-    const match = await bcrypt.compare(password, user.password);
+    console.log(JSON.stringify(user.password));    const match = await bcrypt.compare(password, user.password);
+    console.log(password, user.password, match);
     if (!match) {
       console.log(`[LOGIN FAIL] Email: ${email} - Incorrect password`);
-      return res.status(400).json({ message: 'Invalid credentials' });
+      return res.status(400).json({ message: 'Invalid credentials pwd' });
     }
 
     const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: '1d' });

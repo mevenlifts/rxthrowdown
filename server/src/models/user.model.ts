@@ -7,7 +7,7 @@ export interface IUser extends Document {
   email: string;
   password?: string;
   avatarUrl?: string;
-  homeGym?: string;
+  homeGym?: mongoose.Types.ObjectId;
   birthdate?: string;
   bio?: string;
   level?: 'beginner' | 'intermediate' | 'advanced';
@@ -27,7 +27,7 @@ const UserSchema = new Schema<IUser>({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   avatarUrl: { type: String },
-  homeGym: { type: String },
+  homeGym: { type: Schema.Types.ObjectId, ref: 'Gym' },
   birthdate: { type: String },
   bio: { type: String },
   level: { type: String, enum: ['beginner', 'intermediate', 'advanced'] },

@@ -14,16 +14,17 @@ async function getProfile(req, res) {
         if (!userId)
             return res.status(401).json({ message: 'Unauthorized' });
         const user = await user_model_1.default.findById(userId).select('-password').populate('homeGym');
+        console.log(`[User Profile] UserID: ${userId}`);
         if (!user)
             return res.status(404).json({ message: 'User not found' });
         // Add camelCase fields for frontend compatibility
         const userObj = user.toObject();
-        userObj.firstName = userObj.first_name;
-        userObj.lastName = userObj.last_name;
+        // firstName and lastName are already camelCase in the schema
         // If homeGym is populated, add homeGymName for frontend
         if (userObj.homeGym && typeof userObj.homeGym === 'object' && userObj.homeGym.name) {
             userObj.homeGymName = userObj.homeGym.name;
         }
+        console.log('[User Profile] UserID:', userId, 'userObj:', userObj);
         res.json(userObj);
     }
     catch (err) {
@@ -36,17 +37,17 @@ async function updateProfile(req, res) {
         const userId = req.user?.id;
         if (!userId)
             return res.status(401).json({ message: 'Unauthorized' });
-        const { homeGym, birthdate, first_name, last_name, avatarUrl, bio, level } = req.body;
-        console.log(`[User Update] UserID: ${userId}, homeGym: ${homeGym}, birthdate: ${birthdate}, first_name: ${first_name}, last_name: ${last_name}, avatarUrl: ${avatarUrl}, bio: ${bio}, level: ${level}`);
+        const { homeGym, birthdate, firstName, lastName, avatarUrl, bio, level } = req.body;
+        console.log(`[User Update] UserID: ${userId}, homeGym: ${homeGym}, birthdate: ${birthdate}, firstName: ${firstName}, lastName: ${lastName}, avatarUrl: ${avatarUrl}, bio: ${bio}, level: ${level}`);
         const updateFields = {};
         if (typeof homeGym !== 'undefined')
             updateFields.homeGym = homeGym; // should be gym _id
         if (typeof birthdate !== 'undefined')
             updateFields.birthdate = birthdate;
-        if (typeof first_name !== 'undefined')
-            updateFields.first_name = first_name;
-        if (typeof last_name !== 'undefined')
-            updateFields.last_name = last_name;
+        if (typeof firstName !== 'undefined')
+            updateFields.firstName = firstName;
+        if (typeof lastName !== 'undefined')
+            updateFields.lastName = lastName;
         if (typeof avatarUrl !== 'undefined')
             updateFields.avatarUrl = avatarUrl;
         if (typeof bio !== 'undefined')
@@ -58,8 +59,7 @@ async function updateProfile(req, res) {
             return res.status(404).json({ message: 'User not found' });
         // Add camelCase fields for frontend compatibility
         const userObj = user.toObject();
-        userObj.firstName = userObj.first_name;
-        userObj.lastName = userObj.last_name;
+        // firstName and lastName are already camelCase in the schema
         if (userObj.homeGym && typeof userObj.homeGym === 'object' && userObj.homeGym.name) {
             userObj.homeGymName = userObj.homeGym.name;
         }
@@ -76,4 +76,4 @@ const userSchema = new mongoose_1.default.Schema({
     homeGym: { type: mongoose_1.default.Schema.Types.ObjectId, ref: 'Gym' },
     // ... other fields ...
 });
-exports.default = mongoose_1.default.model('User', userSchema);
+// Removed duplicate User model export to prevent OverwriteModelError

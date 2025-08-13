@@ -21,15 +21,22 @@ export async function updateUserProfile(data: { homeGym?: string; birthdate?: st
   return res.json();
 }
 export async function signupUser(data: {
-  first_name: string;
-  last_name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   password: string;
 }) {
+  // Convert camelCase to snake_case for backend compatibility
+  const payload = {
+    first_name: data.firstName,
+    last_name: data.lastName,
+    email: data.email,
+    password: data.password,
+  };
   const res = await fetch('/api/auth/signup', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error('Signup failed');
   return res.json();

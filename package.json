@@ -8,6 +8,11 @@
     "install:all": "npm install && cd client && npm install && cd ../server && npm install"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "dotenv": "^17.2.1",
     "mongoose": "^8.17.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
   }
 }

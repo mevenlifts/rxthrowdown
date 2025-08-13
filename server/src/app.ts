@@ -5,6 +5,7 @@ import mongoose from 'mongoose';
 import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
 import gymRoutes from './routes/gym.routes';
+import throwdownRoutes from './routes/throwdown.routes';
 
 dotenv.config();
 
@@ -16,6 +17,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/gyms', gymRoutes);
+app.use('/api/throwdowns', throwdownRoutes);
 
 mongoose.connect(process.env.MONGO_URI || '', {
 }).then(() => console.log('MongoDB connected'))

@@ -6,7 +6,7 @@ import FacebookIcon from '@mui/icons-material/Facebook';
 import { signupUser } from '../../services/api';
 
 const SignupForm: React.FC = () => {
-  const [form, setForm] = useState({ first_name: '', last_name: '', email: '', password: '' });
+  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', password: '' });
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
@@ -30,8 +30,8 @@ const SignupForm: React.FC = () => {
     <form onSubmit={handleSubmit}>
       <Stack spacing={3}>
         <Stack direction="row" spacing={2}>
-          <TextField label="First Name" name="first_name" value={form.first_name} onChange={handleChange} fullWidth required />
-          <TextField label="Last Name" name="last_name" value={form.last_name} onChange={handleChange} fullWidth required />
+          <TextField label="First Name" name="firstName" value={form.firstName} onChange={handleChange} fullWidth required />
+          <TextField label="Last Name" name="lastName" value={form.lastName} onChange={handleChange} fullWidth required />
         </Stack>
         <TextField label="Email" name="email" type="email" value={form.email} onChange={handleChange} fullWidth required />
         <TextField label="Password" name="password" type="password" value={form.password} onChange={handleChange} fullWidth required />

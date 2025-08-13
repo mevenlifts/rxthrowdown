@@ -1,21 +1,18 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import DashboardLayout from '../components/DashboardLayout';
 import ThrowdownList, { Throwdown } from '../components/throwdown/ThrowdownList';
+import { fetchThrowdowns } from '../services/throwdownApi';
 import { useNavigate } from 'react-router-dom';
 
-const mockThrowdowns: Throwdown[] = [
-  {
-      id: '1', name: 'Spring Showdown', startDate: '2024-08-01', duration: '2 hours',
-      level: 'beginner'
-  },
-  {
-      id: '2', name: 'Summer Slam', startDate: '2024-09-15', duration: '3 hours',
-      level: 'rx'
-  },
-];
+
+
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
+  const [throwdowns, setThrowdowns] = useState<Throwdown[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(true);
 
   const handleSelect = (id: string) => {
     navigate(`/throwdowns/${id}`);
@@ -41,9 +38,34 @@ const DashboardPage: React.FC = () => {
     }
   } catch {}
 
+  useEffect(() => {
+    setLoading(true);
+    fetchThrowdowns(page, 10)
+      .then(data => {
+        // Map backend throwdown objects to the ThrowdownList shape
+        setThrowdowns(
+          data.throwdowns.map((td: any) => ({
+            id: td._id,
+            name: td.name,
+            startDate: new Date(td.startDate).toLocaleDateString(),
+            duration: td.duration + (td.duration === 1 ? ' day' : ' days'),
+            level: td.scale,
+          }))
+        );
+        setTotalPages(data.totalPages);
+      })
+      .finally(() => setLoading(false));
+  }, [page]);
+
   return (
     <DashboardLayout user={{ name: userName, avatarUrl: "/logo192.png" }}>
-      <ThrowdownList throwdowns={mockThrowdowns} onSelect={handleSelect} onCreate={handleCreate} />
+      <ThrowdownList throwdowns={throwdowns} onSelect={handleSelect} onCreate={handleCreate} />
+      {/* Pagination controls */}
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
+        <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Prev</button>
+        <span style={{ margin: '0 12px' }}>Page {page} of {totalPages}</span>
+        <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next</button>
+      </div>
     </DashboardLayout>
   );
 };

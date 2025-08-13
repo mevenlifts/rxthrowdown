@@ -9,18 +9,22 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const user_model_1 = __importDefault(require("../models/user.model"));
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 const signup = async (req, res) => {
-    const { first_name, last_name, email, password } = req.body;
+    // Accept both camelCase and snake_case for compatibility
+    const firstName = req.body.firstName || req.body.first_name;
+    const lastName = req.body.lastName || req.body.last_name;
+    const { email, password } = req.body;
     try {
         const existing = await user_model_1.default.findOne({ email });
         if (existing)
             return res.status(400).json({ message: 'Email already in use' });
         const hashed = await bcryptjs_1.default.hash(password, 10);
-        const user = new user_model_1.default({ first_name, last_name, email, password: hashed });
+        const user = new user_model_1.default({ firstName, lastName, email, password: hashed });
         await user.save();
         const token = jsonwebtoken_1.default.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: '1d' });
-        // Return all user fields except password
+        // Return all user fields except password, and add camelCase fields for frontend
         const userObj = user.toObject();
         delete userObj.password;
+        // firstName and lastName are already camelCase in the schema
         res.status(201).json({ token, user: userObj });
     }
     catch (err) {
@@ -48,9 +52,10 @@ const login = async (req, res) => {
             return res.status(400).json({ message: 'Invalid credentials' });
         }
         const token = jsonwebtoken_1.default.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: '1d' });
-        // Return all user fields except password
+        // Return all user fields except password, and add camelCase fields for frontend
         const userObj = user.toObject();
         delete userObj.password;
+        // firstName and lastName are already camelCase in the schema
         console.log(`[LOGIN SUCCESS] Email: ${email} - User ID: ${user._id}`);
         res.json({ token, user: userObj });
     }
