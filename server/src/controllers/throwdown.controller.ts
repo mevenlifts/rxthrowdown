@@ -1,3 +1,6 @@
+import { Request, Response } from 'express';
+import Throwdown from '../models/throwdown.model';
+
 // GET /api/throwdowns/:id
 export async function getThrowdownById(req: Request, res: Response) {
   try {
@@ -15,8 +18,6 @@ export async function getThrowdownById(req: Request, res: Response) {
     res.status(500).json({ message: 'Server error' });
   }
 }
-import { Request, Response } from 'express';
-import Throwdown from '../models/throwdown.model';
 
 // GET /api/throwdowns?page=1&limit=10
 export async function getThrowdowns(req: Request, res: Response) {
@@ -40,6 +41,45 @@ export async function getThrowdowns(req: Request, res: Response) {
       totalPages: Math.ceil(total / limit),
       total,
     });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+}
+
+// POST /api/throwdowns/:id/add-participant
+import User from '../models/user.model';
+import mongoose from 'mongoose';
+export async function addParticipantToThrowdown(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const { userIds } = req.body; // expects array of user IDs or a single user ID
+    if (!userIds || (Array.isArray(userIds) && userIds.length === 0)) {
+      return res.status(400).json({ message: 'No user IDs provided' });
+    }
+    const throwdown = await Throwdown.findById(id);
+    if (!throwdown) return res.status(404).json({ message: 'Throwdown not found' });
+
+    // Ensure participants is initialized
+    if (!Array.isArray(throwdown.participants)) {
+      throwdown.participants = [];
+    }
+
+    // Remove participants whose user does not exist
+    const validUsers: { _id: mongoose.Types.ObjectId }[] = await User.find({}, '_id');
+    const validUserIds = validUsers.map(u => u._id.toString());
+    throwdown.participants = throwdown.participants ? throwdown.participants.filter(p => validUserIds.includes(p.user.toString())) : [];
+
+    // Normalize to array
+    const ids = Array.isArray(userIds) ? userIds : [userIds];
+    // Add each user as a participant if not already present
+    throwdown.participants = throwdown.participants || [];
+    ids.forEach(userId => {
+      if (!throwdown.participants!.some(p => p.user.toString() === userId)) {
+        throwdown.participants!.push({ user: userId, score: 0 });
+      }
+    });
+    await throwdown.save();
+    res.json({ message: 'Participants added (unknowns removed)', throwdown });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }

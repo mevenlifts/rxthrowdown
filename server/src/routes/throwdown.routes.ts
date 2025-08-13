@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getThrowdowns, getThrowdownById } from '../controllers/throwdown.controller';
+import { getThrowdowns, getThrowdownById, addParticipantToThrowdown } from '../controllers/throwdown.controller';
 
 const router = Router();
 
@@ -10,5 +10,8 @@ router.get('/', getThrowdowns);
 
 // Get single throwdown by id
 router.get('/:id', getThrowdownById);
+
+// Add participants to a throwdown
+router.post('/:id/add-participant', addParticipantToThrowdown);
 
 export default router;

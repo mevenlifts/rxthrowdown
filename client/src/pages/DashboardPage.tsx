@@ -50,6 +50,7 @@ const DashboardPage: React.FC = () => {
             startDate: new Date(td.startDate).toLocaleDateString(),
             duration: td.duration + (td.duration === 1 ? ' day' : ' days'),
             level: td.scale,
+            participants: Array.isArray(td.participants) ? td.participants.length : 0,
           }))
         );
         setTotalPages(data.totalPages);

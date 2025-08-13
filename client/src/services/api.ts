@@ -52,3 +52,13 @@ export async function loginUser(data: { email: string; password: string }) {
   if (!res.ok) throw new Error(result.message || 'Login failed');
   return result;
 }
+
+export async function signupForThrowdown(throwdownId: string, userId: string) {
+  const res = await fetch(`/api/throwdowns/${throwdownId}/add-participant`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userIds: userId }),
+  });
+  if (!res.ok) throw new Error('Failed to sign up for throwdown');
+  return res.json();
+}

@@ -32,6 +32,7 @@ export interface Throwdown {
   startDate: string;
   duration: string;
   level: 'beginner' | 'intermediate' | 'rx';
+  participants: number;
 }
 
 interface ThrowdownListProps {
@@ -83,6 +84,7 @@ const ThrowdownList: React.FC<ThrowdownListProps> = ({ throwdowns, onSelect, onC
         <Box flex={1} fontWeight="bold">Date</Box>
         <Box flex={1} fontWeight="bold">Duration</Box>
         <Box flex={1} textAlign="center" fontWeight="bold">Scale</Box>
+        <Box flex={1} textAlign="center" fontWeight="bold">Participants</Box>
       </Box>
       <List disablePadding>
         {filtered.map((td, idx) => (
@@ -115,6 +117,11 @@ const ThrowdownList: React.FC<ThrowdownListProps> = ({ throwdowns, onSelect, onC
               </Box>
               <Box flex={1} display="flex" justifyContent="center">
                 <DifficultyTag level={td.level as 'beginner' | 'intermediate' | 'rx'} />
+              </Box>
+              <Box flex={1} display="flex" justifyContent="center">
+                <Typography variant="body2" color="text.secondary">
+                  {td.participants}
+                </Typography>
               </Box>
             </Box>
           </ListItemButton>

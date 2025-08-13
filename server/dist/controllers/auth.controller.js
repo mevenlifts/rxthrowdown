@@ -40,16 +40,18 @@ const login = async (req, res) => {
         const user = await user_model_1.default.findOne({ email });
         if (!user) {
             console.log(`[LOGIN FAIL] Email: ${email} - User not found`);
-            return res.status(400).json({ message: 'Invalid credentials' });
+            return res.status(400).json({ message: 'Invalid credentials email' });
         }
         if (!user.password) {
             console.log(`[LOGIN FAIL] Email: ${email} - No password set`);
             return res.status(400).json({ message: 'User has no password set' });
         }
+        console.log(JSON.stringify(user.password));
         const match = await bcryptjs_1.default.compare(password, user.password);
+        console.log(password, user.password, match);
         if (!match) {
             console.log(`[LOGIN FAIL] Email: ${email} - Incorrect password`);
-            return res.status(400).json({ message: 'Invalid credentials' });
+            return res.status(400).json({ message: 'Invalid credentials pwd' });
         }
         const token = jsonwebtoken_1.default.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: '1d' });
         // Return all user fields except password, and add camelCase fields for frontend

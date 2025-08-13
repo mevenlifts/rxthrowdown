@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { fetchThrowdownById } from '../services/throwdownApi';
+import { signupForThrowdown } from '../services/api';
 import { Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableRow } from '@mui/material';
 
 
@@ -44,6 +45,22 @@ const ThrowdownDetailPage: React.FC = () => {
     }
   }, [id]);
 
+  const handleSignup = async () => {
+    try {
+      const userStr = localStorage.getItem('user') || sessionStorage.getItem('user');
+      if (!userStr) throw new Error('Not logged in');
+      const userObj = JSON.parse(userStr);
+      const userId = userObj._id || userObj.id;
+      if (!userId || !throwdown?._id) throw new Error('Missing user or throwdown ID');
+      await signupForThrowdown(throwdown._id, userId);
+      // Refresh throwdown details after signup
+      fetchThrowdownById(throwdown._id).then(setThrowdown);
+      alert('Signed up successfully!');
+    } catch (err: any) {
+      alert(err.message || 'Signup failed');
+    }
+  };
+
   if (!throwdown) return <div>Loading...</div>;
 
   return (
@@ -68,6 +85,14 @@ const ThrowdownDetailPage: React.FC = () => {
           <b>Author:</b> {throwdown.author ? `${throwdown.author.firstName} ${throwdown.author.lastName}` : 'Unknown'}
         </Typography>
       </Paper>
+      <Box width="100%" maxWidth={600} mb={2} display="flex" justifyContent="flex-end">
+        <button
+          style={{ padding: '8px 24px', fontWeight: 'bold', fontSize: 16, borderRadius: 6, background: '#1976d2', color: 'white', border: 'none', cursor: 'pointer' }}
+          onClick={handleSignup}
+        >
+          Sign Up
+        </button>
+      </Box>
       <Box width="100%" maxWidth={600}>
         <Typography variant="h5" fontWeight="bold" align="center" gutterBottom>
           Participants
@@ -88,20 +113,16 @@ const ThrowdownDetailPage: React.FC = () => {
                   <TableCell colSpan={4} align="center">No participants yet.</TableCell>
                 </TableRow>
               ) : (
-                throwdown.participants.map((p, idx) => (
-                  p.user ? (
+                throwdown.participants
+                  .filter(p => p.user)
+                  .map((p, idx) => (
                     <TableRow key={p.user._id} sx={{ backgroundColor: idx % 2 === 0 ? '#f5f5f5' : 'white' }}>
                       <TableCell align="center" sx={{ fontWeight: 500 }}>{p.user.firstName}</TableCell>
                       <TableCell align="center">{p.user.lastName}</TableCell>
                       <TableCell align="center">{p.user.homeGym && typeof p.user.homeGym === 'object' ? p.user.homeGym.name : ''}</TableCell>
                       <TableCell align="center">{p.score ?? '-'}</TableCell>
                     </TableRow>
-                  ) : (
-                    <TableRow key={idx} sx={{ backgroundColor: idx % 2 === 0 ? '#f5f5f5' : 'white' }}>
-                      <TableCell align="center" colSpan={4} sx={{ color: 'text.disabled' }}>Unknown participant</TableCell>
-                    </TableRow>
-                  )
-                ))
+                  ))
               )}
             </TableBody>
           </Table>
