@@ -3,7 +3,7 @@ import mongoose, { Schema, Document, Types } from 'mongoose';
 
 export interface IParticipant {
   user: Types.ObjectId;
-  score: number;
+  scores: number[];
 }
 
 export interface IThrowdown extends Document {
@@ -19,7 +19,7 @@ export interface IThrowdown extends Document {
 
 const ParticipantSchema = new Schema<IParticipant>({
   user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-  score: { type: Number, required: false },
+  scores: { type: [Number], required: false, default: [] },
 }, { _id: false });
 
 const ThrowdownSchema = new Schema<IThrowdown>({
