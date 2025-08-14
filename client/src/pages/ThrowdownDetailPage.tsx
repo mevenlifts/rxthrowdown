@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
+import DashboardLayout from '../components/DashboardLayout';
 import { useParams } from 'react-router-dom';
 import { fetchThrowdownById } from '../services/throwdownApi';
 import { signupForThrowdown } from '../services/api';
 import { Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableRow } from '@mui/material';
-
 
 interface Gym {
   _id: string;
@@ -20,7 +20,15 @@ interface ParticipantUser {
 
 interface Participant {
   user: ParticipantUser;
-  scores?: number[];
+  score?: number;
+}
+
+interface ScoreType {
+  _id: string;
+  name: string;
+  description: string;
+  inputFields: string[];
+  compareLogic: string;
 }
 
 interface ThrowdownDetail {
@@ -33,39 +41,28 @@ interface ThrowdownDetail {
   scale: string;
   author: ParticipantUser;
   participants: Participant[];
+  scoreType?: ScoreType;
 }
 
 const ThrowdownDetailPage: React.FC = () => {
   const [scoreInput, setScoreInput] = useState('');
+  const [scoreInputReps, setScoreInputReps] = useState('');
   const [scoreLoading, setScoreLoading] = useState(false);
-
-  const handleAddScore = async () => {
-    if (!scoreInput || isNaN(Number(scoreInput))) {
-      alert('Please enter a valid score');
-      return;
-    }
-    setScoreLoading(true);
-    try {
-      const userStr = localStorage.getItem('user') || sessionStorage.getItem('user');
-      if (!userStr) throw new Error('Not logged in');
-      const userObj = JSON.parse(userStr);
-      const userId = userObj._id || userObj.id;
-      if (!userId || !throwdown?._id) throw new Error('Missing user or throwdown ID');
-      await fetch(`/api/throwdowns/${throwdown._id}/add-score`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, score: Number(scoreInput) })
-      });
-      setScoreInput('');
-      fetchThrowdownById(throwdown._id).then(setThrowdown);
-      alert('Score added!');
-    } catch (err: any) {
-      alert(err.message || 'Failed to add score');
-    }
-    setScoreLoading(false);
-  };
-  const { id } = useParams<{ id: string }>();
+  const [refreshing, setRefreshing] = useState(false);
   const [throwdown, setThrowdown] = useState<ThrowdownDetail | null>(null);
+  const { id } = useParams<{ id: string }>();
+
+  // Get current user for DashboardLayout and participant logic
+  const userStr = localStorage.getItem('user') || sessionStorage.getItem('user');
+  const userObj = userStr ? JSON.parse(userStr) : null;
+  const userId = userObj ? (userObj._id || userObj.id) : '';
+  const navUser = userObj ? { name: `${userObj.firstName || ''} ${userObj.lastName || ''}`.trim(), avatarUrl: userObj.avatarUrl || '' } : { name: '', avatarUrl: '' };
+  const isParticipant = userObj && throwdown?.participants?.some(
+    p => p.user && (
+      (typeof p.user === 'object' && p.user._id === userId) ||
+      (typeof p.user === 'string' && p.user === userId)
+    )
+  ) || false;
 
   useEffect(() => {
     if (id) {
@@ -73,13 +70,61 @@ const ThrowdownDetailPage: React.FC = () => {
     }
   }, [id]);
 
+  const handleAddScore = async () => {
+    const scoreType = throwdown?.scoreType?.name;
+    let scoreValue: any;
+    if (scoreType === 'rounds-reps') {
+      if (!scoreInput || isNaN(Number(scoreInput)) || !scoreInputReps || isNaN(Number(scoreInputReps))) {
+        alert('Please enter valid rounds and reps');
+        return;
+      }
+      scoreValue = {
+        rounds: Number(scoreInput),
+        reps: Number(scoreInputReps)
+      };
+    } else if (scoreType === 'time') {
+      if (!scoreInput || isNaN(Number(scoreInput))) {
+        alert('Please enter a valid time');
+        return;
+      }
+      scoreValue = { time: Number(scoreInput) };
+    } else if (scoreType === 'reps') {
+      if (!scoreInput || isNaN(Number(scoreInput))) {
+        alert('Please enter a valid reps count');
+        return;
+      }
+      scoreValue = { reps: Number(scoreInput) };
+    } else {
+      if (!scoreInput || isNaN(Number(scoreInput))) {
+        alert('Please enter a valid score');
+        return;
+      }
+      scoreValue = Number(scoreInput);
+    }
+    setScoreLoading(true);
+    setRefreshing(true);
+    try {
+      if (!userId) throw new Error('Not logged in');
+      if (!throwdown?._id) throw new Error('Missing user or throwdown ID');
+      await fetch(`/api/throwdowns/${throwdown._id}/add-score`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, score: scoreValue })
+      });
+      setScoreInput('');
+      setScoreInputReps('');
+      await fetchThrowdownById(throwdown._id).then(setThrowdown);
+    } catch (err: any) {
+      alert(err.message || 'Failed to add score');
+    }
+    setScoreLoading(false);
+    setRefreshing(false);
+  };
+
   const handleSignup = async () => {
     try {
-      const userStr = localStorage.getItem('user') || sessionStorage.getItem('user');
-      if (!userStr) throw new Error('Not logged in');
-      const userObj = JSON.parse(userStr);
-      const userId = userObj._id || userObj.id;
-      if (!userId || !throwdown?._id) throw new Error('Missing user or throwdown ID');
+      if (!userId) throw new Error('Not logged in');
+      if (!throwdown?._id) throw new Error('Missing user or throwdown ID');
       await signupForThrowdown(throwdown._id, userId);
       fetchThrowdownById(throwdown._id).then(setThrowdown);
       alert('Signed up successfully!');
@@ -90,12 +135,8 @@ const ThrowdownDetailPage: React.FC = () => {
 
   const handleWithdraw = async () => {
     try {
-      const userStr = localStorage.getItem('user') || sessionStorage.getItem('user');
-      if (!userStr) throw new Error('Not logged in');
-      const userObj = JSON.parse(userStr);
-      const userId = userObj._id || userObj.id;
-      if (!userId || !throwdown?._id) throw new Error('Missing user or throwdown ID');
-      // Call withdraw API (to be implemented)
+      if (!userId) throw new Error('Not logged in');
+      if (!throwdown?._id) throw new Error('Missing user or throwdown ID');
       await fetch(`/api/throwdowns/${throwdown._id}/withdraw-participant`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -109,126 +150,163 @@ const ThrowdownDetailPage: React.FC = () => {
   };
 
   if (!throwdown) return <div>Loading...</div>;
-
-  // Determine if logged-in user is a participant
-  const userStr = localStorage.getItem('user') || sessionStorage.getItem('user');
-  let isParticipant = false;
-  let userId = '';
-  if (userStr) {
-    const userObj = JSON.parse(userStr);
-    userId = userObj._id || userObj.id;
-    isParticipant = throwdown.participants.some(
-      p => p.user && (
-        (typeof p.user === 'object' && p.user._id === userId) ||
-        (typeof p.user === 'string' && p.user === userId)
-      )
-    );
-  }
+  if (refreshing) return (
+    <DashboardLayout user={navUser}>
+      <Box minHeight="100vh" display="flex" flexDirection="column" alignItems="center" justifyContent="center" bgcolor="#f7f9fb" px={2} py={4}>
+        <Paper elevation={3} sx={{ maxWidth: 400, p: 4, borderRadius: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <Typography variant="h6" mb={2}>Updating leaderboard...</Typography>
+          <Box display="flex" justifyContent="center" alignItems="center">
+            <span className="loader" style={{ width: 48, height: 48, border: '6px solid #1976d2', borderTop: '6px solid #fff', borderRadius: '50%', animation: 'spin 1s linear infinite', display: 'inline-block' }}></span>
+          </Box>
+        </Paper>
+        <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+      </Box>
+    </DashboardLayout>
+  );
 
   return (
-    <Box minHeight="100vh" display="flex" flexDirection="column" justifyContent="center" alignItems="center" bgcolor="#f7f9fb" px={2}>
-      <Box width="100%" maxWidth={600} display="flex" flexDirection="row" alignItems="center" sx={{ mt: 8, mb: 2 }}>
-        <Typography variant="h3" fontWeight="bold" color="primary.main" gutterBottom sx={{ flex: 1, textAlign: 'left' }}>
-          {throwdown.name}
-        </Typography>
-        {isParticipant ? (
-          <button
-            style={{ padding: '4px 12px', fontWeight: 'bold', fontSize: 13, borderRadius: 6, background: '#d32f2f', color: 'white', border: 'none', cursor: 'pointer' }}
-            onClick={handleWithdraw}
-          >
-            Withdraw
-          </button>
-        ) : (
-          <button
-            style={{ padding: '4px 12px', fontWeight: 'bold', fontSize: 13, borderRadius: 6, background: '#1976d2', color: 'white', border: 'none', cursor: 'pointer' }}
-            onClick={handleSignup}
-          >
-            Challenge Accepted
-          </button>
-        )}
-      </Box>
-      <Paper elevation={4} sx={{ p: 5, maxWidth: 600, width: '100%', mb: 4, borderRadius: 4, textAlign: 'center' }}>
-        <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 2 }}>
-          {`Dates: ${new Date(throwdown.startDate).toLocaleDateString()} - ${new Date(throwdown.endDate).toLocaleDateString()}`}
-        </Typography>
-        <Typography variant="body1" sx={{ mb: 1 }}>
-          <b>Duration:</b> {throwdown.duration} day(s)
-        </Typography>
-        <Typography variant="body1" sx={{ mb: 2 }}>
-          <b>Scale:</b> {throwdown.scale.charAt(0).toUpperCase() + throwdown.scale.slice(1)}
-        </Typography>
-        <Typography variant="body1" sx={{ mb: 2 }}>
-          <b>Workout:</b> {throwdown.workout}
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          <b>Author:</b> {throwdown.author ? `${throwdown.author.firstName} ${throwdown.author.lastName}` : 'Unknown'}
-        </Typography>
-        {isParticipant && (
-          <Box display="flex" justifyContent="center" alignItems="center" gap={2} mt={2}>
-            <input
-              type="number"
-              value={scoreInput}
-              onChange={e => setScoreInput(e.target.value)}
-              placeholder="Add score"
-              style={{ padding: '8px', fontSize: 16, borderRadius: 6, border: '1px solid #ccc', width: 120 }}
-              disabled={scoreLoading}
-            />
-            <button
-              style={{ padding: '8px 16px', fontWeight: 'bold', fontSize: 16, borderRadius: 6, background: '#388e3c', color: 'white', border: 'none', cursor: 'pointer' }}
-              onClick={handleAddScore}
-              disabled={scoreLoading}
-            >
-              {scoreLoading ? 'Adding...' : 'Add Score'}
-            </button>
+    <DashboardLayout user={navUser}>
+      <Box minHeight="100vh" display="flex" flexDirection="column" alignItems="center" justifyContent="center" bgcolor="#f7f9fb" px={2} py={4}>
+        <Paper elevation={3} sx={{ maxWidth: 700, width: '100%', p: 4, borderRadius: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <Box display="flex" alignItems="center" justifyContent="space-between" mb={3} width="100%">
+            <Typography variant="h4" fontWeight={700} mb={1}>{throwdown.name}</Typography>
+            <Box display="flex" gap={2}>
+              {!isParticipant && (
+                <button onClick={handleSignup} style={{ padding: '6px 14px', fontWeight: 500, borderRadius: 6, background: '#1976d2', color: '#fff', border: 'none', boxShadow: '0 2px 8px #1976d233', cursor: 'pointer', fontSize: 14 }}>Challenge Accepted</button>
+              )}
+              {isParticipant && (
+                <button onClick={handleWithdraw} style={{ padding: '6px 14px', fontWeight: 500, borderRadius: 6, background: '#e53935', color: '#fff', border: 'none', boxShadow: '0 2px 8px #e5393533', cursor: 'pointer', fontSize: 14 }}>Withdraw</button>
+              )}
+            </Box>
           </Box>
-        )}
-      </Paper>
-      <Box width="100%" maxWidth={600}>
-        <Typography variant="h5" fontWeight="bold" align="center" gutterBottom>
-          Participants
-        </Typography>
-        <TableContainer component={Paper} sx={{ borderRadius: 3 }}>
-          <Table>
-            <thead>
-              <TableRow>
-                <TableCell align="center"><b>Placement</b></TableCell>
-                <TableCell align="center"><b>First Name</b></TableCell>
-                <TableCell align="center"><b>Last Name</b></TableCell>
-                <TableCell align="center"><b>Home Gym</b></TableCell>
-                <TableCell align="center"><b>Score</b></TableCell>
-              </TableRow>
-            </thead>
-            <TableBody>
-              {throwdown.participants.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} align="center">No participants yet.</TableCell>
-                </TableRow>
+          <Paper elevation={2} sx={{ p: 3, mb: 2, borderRadius: 3, background: '#f5f5f5', width: '100%', maxWidth: 500 }}>
+            <Typography variant="subtitle1" mb={1} fontWeight={600} color="#1976d2">Workout</Typography>
+            <Typography variant="body1" mb={2} fontWeight={500}>{throwdown.workout}</Typography>
+            <Typography variant="body2" mb={1}>Scale: <b>{throwdown.scale}</b></Typography>
+            <Typography variant="body2" mb={1}>Start: {new Date(throwdown.startDate).toLocaleString()}</Typography>
+            <Typography variant="body2" mb={1}>End: {new Date(throwdown.endDate).toLocaleString()}</Typography>
+          </Paper>
+          {isParticipant && (
+            <Box display="flex" alignItems="center" gap={2} mb={2}>
+              {throwdown.scoreType?.name === 'rounds-reps' ? (
+                <>
+                  <Box>
+                    <Typography variant="body2" fontWeight={500}>Rounds</Typography>
+                    <input
+                      type="number"
+                      placeholder="Rounds"
+                      value={scoreInput}
+                      onChange={e => setScoreInput(e.target.value)}
+                      style={{ padding: '8px', borderRadius: 6, border: '1px solid #ccc', width: 80, fontSize: 16 }}
+                    />
+                  </Box>
+                  <Box>
+                    <Typography variant="body2" fontWeight={500}>Reps</Typography>
+                    <input
+                      type="number"
+                      placeholder="Reps"
+                      value={scoreInputReps}
+                      onChange={e => setScoreInputReps(e.target.value)}
+                      style={{ padding: '8px', borderRadius: 6, border: '1px solid #ccc', width: 80, fontSize: 16 }}
+                    />
+                  </Box>
+                </>
               ) : (
-                (() => {
-                  // Sort participants by highest score (descending)
-                  const sorted = [...throwdown.participants]
-                    .filter(p => p.user)
-                    .sort((a, b) => {
-                      const aScore = a.scores && a.scores.length > 0 ? Math.max(...a.scores) : -Infinity;
-                      const bScore = b.scores && b.scores.length > 0 ? Math.max(...b.scores) : -Infinity;
-                      return bScore - aScore;
+                <Box>
+                  <Typography variant="body2" fontWeight={500}>{throwdown.scoreType?.name === 'time' ? 'Time' : 'Reps'}</Typography>
+                  <input
+                    type="number"
+                    placeholder={throwdown.scoreType?.name === 'time' ? 'Time' : 'Reps'}
+                    value={scoreInput}
+                    onChange={e => setScoreInput(e.target.value)}
+                    style={{ padding: '8px', borderRadius: 6, border: '1px solid #ccc', width: 120, fontSize: 16 }}
+                  />
+                </Box>
+              )}
+              <button onClick={handleAddScore} disabled={scoreLoading} style={{ padding: '10px 24px', fontWeight: 600, borderRadius: 8, background: '#43a047', color: '#fff', border: 'none', boxShadow: '0 2px 8px #43a04733', cursor: 'pointer', fontSize: 16 }}>
+                {scoreLoading ? 'Adding...' : 'Add Score'}
+              </button>
+            </Box>
+          )}
+          <TableContainer component={Paper} sx={{ maxWidth: 600, mx: 'auto', mt: 2, borderRadius: 3, boxShadow: 3 }}>
+            <Table>
+              <thead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 16 }}>Place</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 16 }}>Name</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 16 }}>Home Gym</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: 16 }}>Score</TableCell>
+                </TableRow>
+              </thead>
+              <TableBody>
+                {(() => {
+                  // Sort and rank participants
+                  const scoreType = throwdown.scoreType?.name;
+                  let sorted = [...throwdown.participants];
+                  // Sorting logic
+                  if (scoreType === 'rounds-reps') {
+                    sorted.sort((a, b) => {
+                      const aRounds = (a.score as any)?.rounds ?? 0;
+                      const bRounds = (b.score as any)?.rounds ?? 0;
+                      if (aRounds !== bRounds) return bRounds - aRounds;
+                      const aReps = (a.score as any)?.reps ?? 0;
+                      const bReps = (b.score as any)?.reps ?? 0;
+                      return bReps - aReps;
                     });
+                  } else if (scoreType === 'reps') {
+                    sorted.sort((a, b) => ((b.score as any)?.reps ?? 0) - ((a.score as any)?.reps ?? 0));
+                  } else if (scoreType === 'time') {
+                    sorted.sort((a, b) => ((a.score as any)?.time ?? Infinity) - ((b.score as any)?.time ?? Infinity));
+                  } else {
+                    sorted.sort((a, b) => ((b.score as any) ?? 0) - ((a.score as any) ?? 0));
+                  }
+                  // Placement logic with ties
+                  let place = 1;
+                  let prevScore: any = null;
+                  let placeArr = sorted.map((p, idx) => {
+                    let currScore;
+                    if (scoreType === 'rounds-reps') {
+                      currScore = `${(p.score as any)?.rounds ?? 0}-${(p.score as any)?.reps ?? 0}`;
+                    } else if (scoreType === 'reps') {
+                      currScore = (p.score as any)?.reps ?? 0;
+                    } else if (scoreType === 'time') {
+                      currScore = (p.score as any)?.time ?? Infinity;
+                    } else {
+                      currScore = p.score ?? 0;
+                    }
+                    if (prevScore !== null && currScore === prevScore) {
+                      // Same score as previous, same place
+                      return place;
+                    }
+                    place = idx + 1;
+                    prevScore = currScore;
+                    return place;
+                  });
                   return sorted.map((p, idx) => (
-                    <TableRow key={p.user._id} sx={{ backgroundColor: idx % 2 === 0 ? '#f5f5f5' : 'white' }}>
-                      <TableCell align="center" sx={{ fontWeight: 500 }}>{idx + 1}</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 500 }}>{p.user.firstName}</TableCell>
-                      <TableCell align="center">{p.user.lastName}</TableCell>
-                      <TableCell align="center">{p.user.homeGym && typeof p.user.homeGym === 'object' ? p.user.homeGym.name : ''}</TableCell>
-                      <TableCell align="center">{p.scores && p.scores.length > 0 ? p.scores.join(', ') : '-'}</TableCell>
+                    <TableRow key={p.user._id || idx}>
+                      <TableCell sx={{ fontWeight: 700 }}>{placeArr[idx]}</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>{p.user.firstName} {p.user.lastName}</TableCell>
+                      <TableCell sx={{ color: '#1976d2', fontWeight: 500 }}>{typeof p.user.homeGym === 'object' ? p.user.homeGym?.name : p.user.homeGym}</TableCell>
+                      <TableCell sx={{ fontWeight: 500 }}>
+                        {typeof p.score === 'object'
+                          ? ((p.score as any).rounds !== undefined && (p.score as any).reps !== undefined
+                              ? `${(p.score as any).rounds} rounds, ${(p.score as any).reps} reps`
+                              : (p.score as any).time !== undefined
+                                ? `${(p.score as any).time} sec`
+                                : (p.score as any).reps !== undefined
+                                  ? `${(p.score as any).reps} reps`
+                                  : JSON.stringify(p.score))
+                          : p.score}
+                      </TableCell>
                     </TableRow>
                   ));
-                })()
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+                })()}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Paper>
       </Box>
-    </Box>
+    </DashboardLayout>
   );
 };
 

@@ -1,8 +1,9 @@
 import { Router } from 'express';
-import { getThrowdowns, getThrowdownById, addParticipantToThrowdown, withdrawParticipantFromThrowdown } from '../controllers/throwdown.controller';
+import { getThrowdowns, getThrowdownById, addParticipantToThrowdown, withdrawParticipantFromThrowdown, createThrowdown } from '../controllers/throwdown.controller';
 import { addScoreToParticipant } from '../controllers/throwdown.controller';
-
 const router = Router();
+// Create a new throwdown
+router.post('/', createThrowdown);
 
 // GET /api/throwdowns?page=1&limit=10
 

@@ -46,9 +46,7 @@ const login = async (req, res) => {
             console.log(`[LOGIN FAIL] Email: ${email} - No password set`);
             return res.status(400).json({ message: 'User has no password set' });
         }
-        console.log(JSON.stringify(user.password));
         const match = await bcryptjs_1.default.compare(password, user.password);
-        console.log(password, user.password, match);
         if (!match) {
             console.log(`[LOGIN FAIL] Email: ${email} - Incorrect password`);
             return res.status(400).json({ message: 'Invalid credentials pwd' });

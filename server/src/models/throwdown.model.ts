@@ -3,7 +3,7 @@ import mongoose, { Schema, Document, Types } from 'mongoose';
 
 export interface IParticipant {
   user: Types.ObjectId;
-  scores: number[];
+  score?: any; // number or object for multi-score support
 }
 
 export interface IThrowdown extends Document {
@@ -15,17 +15,19 @@ export interface IThrowdown extends Document {
   workout: string;
   scale: 'beginner' | 'intermediate' | 'rx';
   participants?: IParticipant[];
+  scoreType: Types.ObjectId | import('./scoreType.model').IScoreType;
 }
 
 const ParticipantSchema = new Schema<IParticipant>({
   user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-  scores: { type: [Number], required: false, default: [] },
+  score: { type: Schema.Types.Mixed, required: false },
 }, { _id: false });
 
 const ThrowdownSchema = new Schema<IThrowdown>({
   name: { type: String, required: true },
   startDate: { type: Date, required: true },
-  duration: { type: Number, required: true, min: 1 },
+    duration: { type: Number, required: true },
+    scoreType: { type: Schema.Types.ObjectId, ref: 'ScoreType', required: true },
   endDate: { type: Date, required: true },
   author: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   workout: { type: String, required: true },
