@@ -127,29 +127,25 @@ const ThrowdownDetailPage: React.FC = () => {
 
   return (
     <Box minHeight="100vh" display="flex" flexDirection="column" justifyContent="center" alignItems="center" bgcolor="#f7f9fb" px={2}>
-      <Box width="100%" maxWidth={600} display="flex" flexDirection="column" alignItems="center" gap={2} sx={{ mt: 8 }}>
-        <Typography variant="h3" fontWeight="bold" color="primary.main" gutterBottom sx={{ mb: 2, textAlign: 'center' }}>
+      <Box width="100%" maxWidth={600} display="flex" flexDirection="row" alignItems="center" sx={{ mt: 8, mb: 2 }}>
+        <Typography variant="h3" fontWeight="bold" color="primary.main" gutterBottom sx={{ flex: 1, textAlign: 'left' }}>
           {throwdown.name}
         </Typography>
-        <Box width="100%" display="flex" justifyContent="center" gap={2} mb={2}>
-          {isParticipant ? (
-            <>
-              <button
-                style={{ padding: '8px 24px', fontWeight: 'bold', fontSize: 16, borderRadius: 6, background: '#d32f2f', color: 'white', border: 'none', cursor: 'pointer' }}
-                onClick={handleWithdraw}
-              >
-                Withdraw
-              </button>
-            </>
-          ) : (
-            <button
-              style={{ padding: '8px 24px', fontWeight: 'bold', fontSize: 16, borderRadius: 6, background: '#1976d2', color: 'white', border: 'none', cursor: 'pointer' }}
-              onClick={handleSignup}
-            >
-              Sign Up
-            </button>
-          )}
-        </Box>
+        {isParticipant ? (
+          <button
+            style={{ padding: '4px 12px', fontWeight: 'bold', fontSize: 13, borderRadius: 6, background: '#d32f2f', color: 'white', border: 'none', cursor: 'pointer' }}
+            onClick={handleWithdraw}
+          >
+            Withdraw
+          </button>
+        ) : (
+          <button
+            style={{ padding: '4px 12px', fontWeight: 'bold', fontSize: 13, borderRadius: 6, background: '#1976d2', color: 'white', border: 'none', cursor: 'pointer' }}
+            onClick={handleSignup}
+          >
+            Challenge Accepted
+          </button>
+        )}
       </Box>
       <Paper elevation={4} sx={{ p: 5, maxWidth: 600, width: '100%', mb: 4, borderRadius: 4, textAlign: 'center' }}>
         <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 2 }}>
@@ -195,6 +191,7 @@ const ThrowdownDetailPage: React.FC = () => {
           <Table>
             <thead>
               <TableRow>
+                <TableCell align="center"><b>Placement</b></TableCell>
                 <TableCell align="center"><b>First Name</b></TableCell>
                 <TableCell align="center"><b>Last Name</b></TableCell>
                 <TableCell align="center"><b>Home Gym</b></TableCell>
@@ -207,16 +204,25 @@ const ThrowdownDetailPage: React.FC = () => {
                   <TableCell colSpan={4} align="center">No participants yet.</TableCell>
                 </TableRow>
               ) : (
-                throwdown.participants
-                  .filter(p => p.user)
-                  .map((p, idx) => (
+                (() => {
+                  // Sort participants by highest score (descending)
+                  const sorted = [...throwdown.participants]
+                    .filter(p => p.user)
+                    .sort((a, b) => {
+                      const aScore = a.scores && a.scores.length > 0 ? Math.max(...a.scores) : -Infinity;
+                      const bScore = b.scores && b.scores.length > 0 ? Math.max(...b.scores) : -Infinity;
+                      return bScore - aScore;
+                    });
+                  return sorted.map((p, idx) => (
                     <TableRow key={p.user._id} sx={{ backgroundColor: idx % 2 === 0 ? '#f5f5f5' : 'white' }}>
+                      <TableCell align="center" sx={{ fontWeight: 500 }}>{idx + 1}</TableCell>
                       <TableCell align="center" sx={{ fontWeight: 500 }}>{p.user.firstName}</TableCell>
                       <TableCell align="center">{p.user.lastName}</TableCell>
                       <TableCell align="center">{p.user.homeGym && typeof p.user.homeGym === 'object' ? p.user.homeGym.name : ''}</TableCell>
                       <TableCell align="center">{p.scores && p.scores.length > 0 ? p.scores.join(', ') : '-'}</TableCell>
                     </TableRow>
-                  ))
+                  ));
+                })()
               )}
             </TableBody>
           </Table>
