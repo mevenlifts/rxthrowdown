@@ -9,3 +9,17 @@ export async function fetchThrowdownById(id: string) {
   if (!res.ok) throw new Error('Failed to fetch throwdown');
   return res.json();
 }
+
+export async function createThrowdown(data: any) {
+  const response = await fetch('/api/throwdowns', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to create throwdown');
+  }
+  return response.json();
+}

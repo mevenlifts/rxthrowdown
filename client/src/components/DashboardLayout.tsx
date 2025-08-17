@@ -21,6 +21,7 @@ import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
 import PersonIcon from '@mui/icons-material/Person';
 import SportsKabaddiIcon from '@mui/icons-material/SportsKabaddi';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
+import EditNoteIcon from '@mui/icons-material/EditNote';
 import ListItemButton from '@mui/material/ListItemButton';
 
 const drawerWidth = 220;
@@ -28,6 +29,7 @@ const drawerWidth = 220;
 const navItems = [
   { text: 'My Profile', icon: <PersonIcon /> },
   { text: 'Throwdowns', icon: <SportsKabaddiIcon /> },
+  { text: 'Create Throwdown', icon: <EditNoteIcon sx={{ color: 'grey.600' }} /> },
   { text: 'Logout', icon: <AddCircleIcon color="error" /> },
 ];
 
@@ -48,6 +50,7 @@ const DashboardLayout: React.FC<{ user: { name: string; avatarUrl?: string }, ch
             onClick={() => {
               if (text === 'Throwdowns') navigate('/dashboard');
               else if (text === 'My Profile') navigate('/profile');
+              else if (text === 'Create Throwdown') navigate('/create-throwdown');
               else if (text === 'Logout') {
                 localStorage.removeItem('token');
                 localStorage.removeItem('user');

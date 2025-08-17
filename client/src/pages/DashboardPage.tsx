@@ -6,7 +6,6 @@ import { useNavigate } from 'react-router-dom';
 
 
 
-
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [throwdowns, setThrowdowns] = useState<Throwdown[]>([]);
@@ -19,7 +18,7 @@ const DashboardPage: React.FC = () => {
   };
 
   const handleCreate = () => {
-    navigate('/throwdowns/create');
+    navigate('/create-throwdown');
   };
 
   // Get user name from localStorage or fallback

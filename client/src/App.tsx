@@ -7,6 +7,7 @@ import AuthPage from './components/auth/AuthPage';
 import DashboardPage from './pages/DashboardPage';
 import ProfilePage from './pages/ProfilePage';
 import ThrowdownDetailPage from './pages/ThrowdownDetailPage';
+import CreateThrowdownPage from './pages/CreateThrowdownPage';
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/profile" element={<ProfilePage user={{ name: 'Jane Doe' }} />} />
           <Route path="/throwdowns/:id" element={<ThrowdownDetailPage />} />
+          <Route path="/create-throwdown" element={<CreateThrowdownPage />} />
         </Routes>
       </Router>
     </ThemeProvider>
