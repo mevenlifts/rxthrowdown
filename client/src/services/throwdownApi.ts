@@ -23,3 +23,9 @@ export async function createThrowdown(data: any) {
   }
   return response.json();
 }
+
+export async function fetchScoreTypes() {
+  const res = await fetch('/api/score-types');
+  if (!res.ok) throw new Error('Failed to fetch score types');
+  return res.json();
+}

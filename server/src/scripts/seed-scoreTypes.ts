@@ -20,6 +20,12 @@ const scoreTypes = [
     inputFields: ['reps'],
     compareLogic: 'highest',
   },
+  {
+    name: 'lbs',
+    description: 'Total weight lifted in pounds',
+    inputFields: ['lbs'],
+    compareLogic: 'higher-is-better',
+  },
 ];
 
 async function seed() {

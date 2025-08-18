@@ -12,6 +12,7 @@ const ScoreTypeSchema: Schema = new Schema({
   description: { type: String, required: true },
   inputFields: [{ type: String, required: true }],
   compareLogic: { type: String, required: true },
+  lbs: { type: Number },
 });
 
 export default mongoose.model<IScoreType>('ScoreType', ScoreTypeSchema);

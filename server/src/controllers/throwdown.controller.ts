@@ -112,7 +112,11 @@ export async function addScoreToParticipant(req: Request, res: Response) {
     }
 
     // Validate score based on scoreType
-    const scoreType = throwdown.scoreType;
+    let scoreType = throwdown.scoreType;
+    if (!scoreType) {
+      await throwdown.populate('scoreType');
+      scoreType = throwdown.scoreType;
+    }
     if (!scoreType) {
       console.log('[ADD SCORE] Score type not found for throwdown:', id);
       return res.status(400).json({ message: 'Score type not found for throwdown' });
@@ -154,6 +158,16 @@ export async function addScoreToParticipant(req: Request, res: Response) {
         return res.status(400).json({ message: 'Score must include reps as a number' });
       }
       participant.score = { reps: score.reps };
+    } else if (scoreTypeName === 'lbs') {
+      // Expect score = { lbs: number }
+      if (
+        typeof score !== 'object' ||
+        typeof score.lbs !== 'number'
+      ) {
+        console.log('[ADD SCORE] Invalid lbs score:', score);
+        return res.status(400).json({ message: 'Score must include lbs as a number' });
+      }
+      participant.score = { lbs: score.lbs };
     } else {
       // Fallback: just store score as-is
       participant.score = score;

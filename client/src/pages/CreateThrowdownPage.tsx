@@ -3,15 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { Box, Typography, TextField, Button, MenuItem, Paper, CircularProgress, IconButton, Checkbox, FormControlLabel } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
-import { createThrowdown } from '../services/throwdownApi';
+import { createThrowdown, fetchScoreTypes } from '../services/throwdownApi';
 import DashboardLayout from '../components/DashboardLayout';
 
-const scoringTypes = [
-  { value: 'rounds-reps', label: 'Rounds + Reps' },
-  { value: 'reps', label: 'Reps' },
-  { value: 'time', label: 'Time' },
-];
 
+//TODO: pull from db
 const CreateThrowdownPage: React.FC = () => {
   const navigate = useNavigate();
   const [title, setTitle] = useState('');
@@ -22,6 +18,20 @@ const CreateThrowdownPage: React.FC = () => {
   const [durationMonths, setDurationMonths] = useState('');
   const [durationDays, setDurationDays] = useState('');
   const [videoRequired, setVideoRequired] = useState(false);
+  const [scoreTypes, setScoreTypes] = useState<any[]>([]);
+  const [scoreTypesLoading, setScoreTypesLoading] = useState(true);
+
+  React.useEffect(() => {
+    fetchScoreTypes()
+      .then(data => {
+        setScoreTypes(data.map((type: any) => ({ value: type.name, label: type.name })));
+        setScoreTypesLoading(false);
+      })
+      .catch(() => {
+        setScoreTypesLoading(false);
+        setScoreTypes([]);
+      });
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,7 +66,7 @@ const CreateThrowdownPage: React.FC = () => {
   };
 
   const handleAddWorkout = () => {
-    setWorkouts(prev => [...prev, { description: '', timeCap: '', scoringType: 'rounds-reps' }]);
+    setWorkouts(prev => [...prev, { description: '', timeCap: '', scoringType: scoreTypes[0]?.value || '' }]);
   };
 
   const handleRemoveWorkout = (idx: number) => {
@@ -82,9 +92,15 @@ const CreateThrowdownPage: React.FC = () => {
                   <TextField label="Workout Description" value={workout.description} onChange={e => handleWorkoutChange(idx, 'description', e.target.value)} fullWidth required multiline rows={2} sx={{ mb: 2 }} />
                   <TextField label="Time Cap (minutes)" value={workout.timeCap} onChange={e => handleWorkoutChange(idx, 'timeCap', e.target.value)} fullWidth type="number" sx={{ mb: 2 }} />
                   <TextField select label="Scoring Type" value={workout.scoringType} onChange={e => handleWorkoutChange(idx, 'scoringType', e.target.value)} fullWidth required sx={{ mb: 2 }}>
-                    {scoringTypes.map((type: any) => (
-                      <MenuItem key={type.value} value={type.value}>{type.label}</MenuItem>
-                    ))}
+                    {scoreTypesLoading ? (
+                      <MenuItem value="" disabled>Loading...</MenuItem>
+                    ) : scoreTypes.length === 0 ? (
+                      <MenuItem value="" disabled>No score types found</MenuItem>
+                    ) : (
+                      scoreTypes.map((type: any) => (
+                        <MenuItem key={type.value} value={type.value}>{type.label}</MenuItem>
+                      ))
+                    )}
                   </TextField>
                   {workouts.length > 1 && (
                     <Button size="small" color="error" variant="outlined" onClick={() => handleRemoveWorkout(idx)} sx={{ position: 'absolute', top: 8, right: 8 }}>Remove</Button>

@@ -6,6 +6,7 @@ import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
 import gymRoutes from './routes/gym.routes';
 import throwdownRoutes from './routes/throwdown.routes';
+import scoreTypeRoutes from './routes/scoreType.routes';
 
 dotenv.config();
 
@@ -18,6 +19,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/gyms', gymRoutes);
 app.use('/api/throwdowns', throwdownRoutes);
+app.use('/api/score-types', scoreTypeRoutes);
 
 mongoose.connect(process.env.MONGO_URI || '', {
 }).then(() => console.log('MongoDB connected'))
