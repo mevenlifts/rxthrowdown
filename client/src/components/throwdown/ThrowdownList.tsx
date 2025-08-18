@@ -22,7 +22,15 @@ const DifficultyTag: React.FC<{ level: 'beginner' | 'intermediate' | 'rx' }> = (
   <Chip
     label={levelLabels[level]}
     size="small"
-    sx={{ backgroundColor: levelColors[level], color: '#fff', fontWeight: 'bold' }}
+    sx={{
+      backgroundColor: levelColors[level],
+      color: '#fff',
+      fontWeight: 'bold',
+      minWidth: 90,
+      textAlign: 'center',
+      borderRadius: 16,
+      justifyContent: 'center',
+    }}
   />
 );
 

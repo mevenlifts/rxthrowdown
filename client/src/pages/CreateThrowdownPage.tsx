@@ -20,6 +20,10 @@ const CreateThrowdownPage: React.FC = () => {
   const [videoRequired, setVideoRequired] = useState(false);
   const [scoreTypes, setScoreTypes] = useState<any[]>([]);
   const [scoreTypesLoading, setScoreTypesLoading] = useState(true);
+  const [startDate, setStartDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  });
 
   React.useEffect(() => {
     fetchScoreTypes()
@@ -37,12 +41,20 @@ const CreateThrowdownPage: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     try {
+      // Validate start date
+      const todayStr = new Date().toISOString().split('T')[0];
+      if (startDate < todayStr) {
+        setLoading(false);
+        alert('Start date must be today or in the future.');
+        return;
+      }
       // Calculate total duration in days
       const months = Number(durationMonths) || 0;
       const days = Number(durationDays) || 0;
       const totalDuration = months * 30 + days;
       await createThrowdown({
         name: title,
+        startDate,
         duration: totalDuration > 0 ? totalDuration : undefined,
         workouts,
         videoRequired,
@@ -85,6 +97,37 @@ const CreateThrowdownPage: React.FC = () => {
           </Box>
           <form onSubmit={handleSubmit} style={{ width: '100%' }}>
             <TextField label="Throwdown Title" value={title} onChange={e => setTitle(e.target.value)} fullWidth required sx={{ mb: 2 }} />
+            <TextField
+              label="Start Date"
+              type="date"
+              value={startDate}
+              onChange={e => setStartDate(e.target.value)}
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+              sx={{ mb: 2 }}
+              inputProps={{ min: new Date().toISOString().split('T')[0] }}
+              required
+            />
+            <Box display="flex" gap={2} sx={{ mb: 2 }}>
+              <TextField
+                label="Duration (months)"
+                type="number"
+                value={durationMonths}
+                onChange={e => setDurationMonths(e.target.value)}
+                fullWidth
+                sx={{ mb: 0 }}
+                inputProps={{ min: 0 }}
+              />
+              <TextField
+                label="Duration (days)"
+                type="number"
+                value={durationDays}
+                onChange={e => setDurationDays(e.target.value)}
+                fullWidth
+                sx={{ mb: 0 }}
+                inputProps={{ min: 0 }}
+              />
+            </Box>
             <Box display="flex" flexDirection="column" gap={2} sx={{ mb: 3 }}>
               {workouts.map((workout, idx) => (
                 <Box key={idx} sx={{ mb: 3, border: '1px solid #eee', borderRadius: 2, p: 2, position: 'relative' }}>
