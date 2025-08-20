@@ -6,13 +6,11 @@ import AddIcon from '@mui/icons-material/Add';
 import { createThrowdown, fetchScoreTypes } from '../services/throwdownApi';
 import DashboardLayout from '../components/DashboardLayout';
 
-
-//TODO: pull from db
 const CreateThrowdownPage: React.FC = () => {
   const navigate = useNavigate();
   const [title, setTitle] = useState('');
   const [workouts, setWorkouts] = useState([
-    { description: '', timeCap: '', scoringType: 'rounds-reps' }
+    { description: '', timeCap: '', scoringType: '' }
   ]);
   const [loading, setLoading] = useState(false);
   const [durationMonths, setDurationMonths] = useState('');
@@ -24,12 +22,20 @@ const CreateThrowdownPage: React.FC = () => {
     const today = new Date();
     return today.toISOString().split('T')[0];
   });
+  const [scale, setScale] = useState<'beginner' | 'intermediate' | 'rx'>('beginner');
 
   React.useEffect(() => {
     fetchScoreTypes()
       .then(data => {
-        setScoreTypes(data.map((type: any) => ({ value: type.name, label: type.name })));
+        const mappedTypes = data.map((type: any) => ({ value: type._id, label: type.name }));
+        setScoreTypes(mappedTypes);
         setScoreTypesLoading(false);
+        // If workouts[0].scoringType is empty or not a valid _id, set it to the first scoreType _id
+        setWorkouts(prev => prev.map((w, i) =>
+          i === 0 && (!w.scoringType || !mappedTypes.some((t: any) => t.value === w.scoringType))
+            ? { ...w, scoringType: mappedTypes[0]?.value || '' }
+            : w
+        ));
       })
       .catch(() => {
         setScoreTypesLoading(false);
@@ -48,20 +54,44 @@ const CreateThrowdownPage: React.FC = () => {
         alert('Start date must be today or in the future.');
         return;
       }
+      // Get current user ID from localStorage/sessionStorage
+      let author;
+      try {
+        const userStr = localStorage.getItem('user') || sessionStorage.getItem('user');
+        const userObj = userStr ? JSON.parse(userStr) : null;
+        author = userObj ? (userObj._id || userObj.id) : undefined;
+      } catch (err) {
+        console.error('Error fetching or parsing user from storage:', err);
+        author = undefined;
+      }
+      if (!author) {
+        setLoading(false);
+        console.error('Could not determine current user. Please log in again.');
+        alert('Could not determine current user. Please log in again.');
+        return;
+      }
       // Calculate total duration in days
       const months = Number(durationMonths) || 0;
       const days = Number(durationDays) || 0;
       const totalDuration = months * 30 + days;
+      console.log('Creating throwdown with title:', title);
+      // Map workouts to use scoreType _id and ensure timeCap is a number
+      const mappedWorkouts = workouts.map(w => ({
+        ...w,
+        scoreType: w.scoringType, // already _id from dropdown
+        timeCap: Number(w.timeCap)
+      }));
       await createThrowdown({
-        name: title,
+        title,
         startDate,
         duration: totalDuration > 0 ? totalDuration : undefined,
-        workouts,
+        workouts: mappedWorkouts,
         videoRequired,
+        scale,
+        author,
       });
       setLoading(false);
       navigate('/dashboard');
-      window.location.reload();
     } catch (err: any) {
       setLoading(false);
       alert(err.message || 'Failed to create throwdown');
@@ -70,7 +100,6 @@ const CreateThrowdownPage: React.FC = () => {
 
   const handleCancel = () => {
     navigate('/dashboard');
-    window.location.reload();
   };
 
   const handleWorkoutChange = (idx: number, field: string, value: string) => {
@@ -128,6 +157,19 @@ const CreateThrowdownPage: React.FC = () => {
                 inputProps={{ min: 0 }}
               />
             </Box>
+            <TextField
+              label="Scale"
+              select
+              value={scale}
+              onChange={e => setScale(e.target.value as 'beginner' | 'intermediate' | 'rx')}
+              fullWidth
+              sx={{ mb: 2 }}
+              required
+            >
+              <MenuItem value="beginner">Beginner</MenuItem>
+              <MenuItem value="intermediate">Intermediate</MenuItem>
+              <MenuItem value="rx">RX</MenuItem>
+            </TextField>
             <Box display="flex" flexDirection="column" gap={2} sx={{ mb: 3 }}>
               {workouts.map((workout, idx) => (
                 <Box key={idx} sx={{ mb: 3, border: '1px solid #eee', borderRadius: 2, p: 2, position: 'relative' }}>

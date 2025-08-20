@@ -17,13 +17,19 @@ async function migrate() {
   }
   const throwdowns = await Throwdown.find();
   for (const td of throwdowns) {
-    // If scoreType is missing or invalid, assign a random valid scoreType
-    const valid = scoreTypes.some(st => (st._id as mongoose.Types.ObjectId).equals(td.scoreType as mongoose.Types.ObjectId));
-    if (!valid) {
-      const randomScoreType = scoreTypes[Math.floor(Math.random() * scoreTypes.length)];
-      td.scoreType = randomScoreType._id as mongoose.Types.ObjectId;
-      await td.save();
-      console.log(`Updated throwdown ${td._id} with scoreType ${randomScoreType.name}`);
+    let updated = false;
+    if (Array.isArray(td.workouts)) {
+      for (let i = 0; i < td.workouts.length; i++) {
+        const workout = td.workouts[i];
+        const valid = scoreTypes.some(st => (st._id as mongoose.Types.ObjectId).equals(workout.scoreType as mongoose.Types.ObjectId));
+        if (!valid) {
+          const randomScoreType = scoreTypes[Math.floor(Math.random() * scoreTypes.length)];
+          workout.scoreType = randomScoreType._id as mongoose.Types.ObjectId;
+          updated = true;
+          console.log(`Updated throwdown ${td._id} workout ${i} with scoreType ${randomScoreType.name}`);
+        }
+      }
+      if (updated) await td.save();
     }
   }
   console.log('Migration complete.');

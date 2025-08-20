@@ -45,7 +45,7 @@ const DashboardPage: React.FC = () => {
         setThrowdowns(
           data.throwdowns.map((td: any) => ({
             id: td._id,
-            name: td.name,
+            title: td.title,
             startDate: new Date(td.startDate).toLocaleDateString(),
             duration: td.duration + (td.duration === 1 ? ' day' : ' days'),
             level: td.scale,

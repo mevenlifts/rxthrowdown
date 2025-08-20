@@ -36,7 +36,7 @@ const DifficultyTag: React.FC<{ level: 'beginner' | 'intermediate' | 'rx' }> = (
 
 export interface Throwdown {
   id: string;
-  name: string;
+  title: string;
   startDate: string;
   duration: string;
   level: 'beginner' | 'intermediate' | 'rx';
@@ -56,7 +56,9 @@ const ThrowdownList: React.FC<ThrowdownListProps> = ({ throwdowns, onSelect, onC
   const filtered = useMemo(
     () =>
       throwdowns.filter(td =>
-        [td.name, td.startDate, td.duration].some(field => field.toLowerCase().includes(search.toLowerCase()))
+        [td.title, td.startDate, td.duration]
+          .map(field => (typeof field === 'string' ? field : String(field)))
+          .some(field => field.toLowerCase().includes(search.toLowerCase()))
       ),
     [throwdowns, search]
   );
@@ -110,7 +112,7 @@ const ThrowdownList: React.FC<ThrowdownListProps> = ({ throwdowns, onSelect, onC
             <Box display="flex" width="100%" alignItems="center">
               <Box flex={1}>
                 <Typography variant="body2" fontWeight="bold" color="text.primary">
-                  {td.name}
+                  {td.title}
                 </Typography>
               </Box>
               <Box flex={1}>

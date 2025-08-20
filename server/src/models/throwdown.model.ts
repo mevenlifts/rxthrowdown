@@ -3,34 +3,46 @@ import mongoose, { Schema, Document, Types } from 'mongoose';
 
 export interface IParticipant {
   user: Types.ObjectId;
-  score?: any; // number or object for multi-score support
+  score?: any; // legacy single score
+  scores?: any[]; // array for multi-workout scores
+}
+
+export interface IWorkoutPiece {
+  description: string;
+  timeCap: number;
+  scoreType: Types.ObjectId | import('./scoreType.model').IScoreType | string;
 }
 
 export interface IThrowdown extends Document {
-  name: string;
+  title: string;
   startDate: Date;
   duration: number;
-  endDate: Date;
   author: Types.ObjectId;
-  workout: string;
+  workouts: IWorkoutPiece[];
+  videoRequired: boolean;
   scale: 'beginner' | 'intermediate' | 'rx';
   participants?: IParticipant[];
-  scoreType: Types.ObjectId | import('./scoreType.model').IScoreType;
 }
 
 const ParticipantSchema = new Schema<IParticipant>({
   user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   score: { type: Schema.Types.Mixed, required: false },
+  scores: { type: [Schema.Types.Mixed], required: false },
+}, { _id: false });
+
+const WorkoutPieceSchema = new Schema<IWorkoutPiece>({
+  description: { type: String, required: true },
+  timeCap: { type: Number, required: true },
+  scoreType: { type: Schema.Types.Mixed, required: true },
 }, { _id: false });
 
 const ThrowdownSchema = new Schema<IThrowdown>({
-  name: { type: String, required: true },
+  title: { type: String, required: true },
   startDate: { type: Date, required: true },
-    duration: { type: Number, required: true },
-    scoreType: { type: Schema.Types.ObjectId, ref: 'ScoreType', required: true },
-  endDate: { type: Date, required: true },
+  duration: { type: Number, required: true },
   author: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-  workout: { type: String, required: true },
+  workouts: { type: [WorkoutPieceSchema], required: true },
+  videoRequired: { type: Boolean, default: false },
   scale: { type: String, enum: ['beginner', 'intermediate', 'rx'], required: true },
   participants: [ParticipantSchema],
 }, { timestamps: true });

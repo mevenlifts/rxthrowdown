@@ -2,30 +2,34 @@
 import ScoreType from '../models/scoreType.model';
 export async function createThrowdown(req: Request, res: Response) {
   try {
-    const { name, startDate, endDate, duration, workout, scale, author, scoreTypeId } = req.body;
-    if (!name || !startDate || !endDate || !duration || !workout || !scale || !author || !scoreTypeId) {
-      console.log('[CREATE THROWDOWN] Missing required fields:', { name, startDate, endDate, duration, workout, scale, author, scoreTypeId });
+    const { title, startDate, duration, workouts, scale, author, videoRequired } = req.body;
+    if (!title || !startDate || !duration || !workouts || !scale || !author) {
+      console.log('[CREATE THROWDOWN] Missing required fields:', { title, startDate, duration, workouts, scale, author });
       return res.status(400).json({ message: 'Missing required fields' });
     }
-    // Validate scoreType exists
-    const scoreType = await ScoreType.findById(scoreTypeId);
-    if (!scoreType) {
-      console.log('[CREATE THROWDOWN] Invalid score type:', scoreTypeId);
-      return res.status(400).json({ message: 'Invalid score type' });
+    // Validate each workout's scoreType exists
+    for (const workout of workouts) {
+      if (!workout.scoreType) {
+        return res.status(400).json({ message: 'Each workout must have a scoreType' });
+      }
+      const scoreType = await ScoreType.findById(workout.scoreType);
+      if (!scoreType) {
+        return res.status(400).json({ message: `Invalid score type for workout: ${workout.description}` });
+      }
     }
     const throwdown = await Throwdown.create({
-      name,
+      title,
       startDate,
-      endDate,
       duration,
-      workout,
+      workouts,
       scale,
       author,
-      scoreType: scoreType._id,
+      videoRequired: !!videoRequired,
       participants: [],
     });
     res.status(201).json({ message: 'Throwdown created', throwdown });
   } catch (err) {
+    console.error('[CREATE THROWDOWN ERROR]', err);
     res.status(500).json({ message: 'Server error' });
   }
 }
@@ -38,7 +42,10 @@ export async function getThrowdownById(req: Request, res: Response) {
     const { id } = req.params;
     const throwdown = await Throwdown.findById(id)
       .populate('author', 'firstName lastName email')
-      .populate('scoreType')
+      .populate({
+        path: 'workouts.scoreType',
+        select: '_id name description',
+      })
       .populate({
         path: 'participants.user',
         select: 'firstName lastName email homeGym',
@@ -48,7 +55,26 @@ export async function getThrowdownById(req: Request, res: Response) {
       console.log('[GET THROWDOWN] Throwdown not found:', id);
       return res.status(404).json({ message: 'Throwdown not found' });
     }
-    res.json(throwdown);
+    // Fetch all score types for fallback mapping
+    const allScoreTypes: { _id: any; name: string }[] = await ScoreType.find({}, '_id name');
+    const tdObj = throwdown.toObject();
+    if (Array.isArray(tdObj.workouts)) {
+      tdObj.workouts = tdObj.workouts.map(w => {
+        let scoreTypeName = '';
+        if (w.scoreType && typeof w.scoreType === 'object' && 'name' in w.scoreType && typeof w.scoreType.name === 'string') {
+          scoreTypeName = w.scoreType.name;
+        } else if (typeof w.scoreType === 'string' && /^[a-f\d]{24}$/.test(w.scoreType)) {
+          // Find matching scoreType by ID
+          const found = allScoreTypes.find(st => st._id.toString() === w.scoreType);
+          scoreTypeName = found ? found.name : '';
+        }
+        return {
+          ...w,
+          scoreTypeName,
+        };
+      });
+    }
+    res.json(tdObj);
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -86,14 +112,14 @@ export async function getThrowdowns(req: Request, res: Response) {
 export async function addScoreToParticipant(req: Request, res: Response) {
   try {
     const { id } = req.params;
-    const { userId, score } = req.body;
-    console.log(`[ADD SCORE] throwdownId: ${id}, userId: ${userId}, score:`, score);
-    if (!userId || !score) {
-      console.log('[ADD SCORE] Missing userId or score:', { userId, score });
-      return res.status(400).json({ message: 'User ID and score required' });
+    const { userId, scores } = req.body;
+    console.log(`[ADD SCORE] throwdownId: ${id}, userId: ${userId}, scores:`, scores);
+    if (!userId || !scores || !Array.isArray(scores)) {
+      console.log('[ADD SCORE] Missing userId or scores:', { userId, scores });
+      return res.status(400).json({ message: 'User ID and scores array required' });
     }
-    // Populate scoreType for validation
-    const throwdown = await Throwdown.findById(id).populate('scoreType');
+    // Find throwdown and populate workouts.scoreType
+    const throwdown = await Throwdown.findById(id).populate('workouts.scoreType');
     if (!throwdown) {
       console.log('[ADD SCORE] Throwdown not found:', id);
       return res.status(404).json({ message: 'Throwdown not found' });
@@ -104,82 +130,74 @@ export async function addScoreToParticipant(req: Request, res: Response) {
       throwdown.participants = [];
     }
 
-    // Find participant and set score
+    // Find participant and set scores
     const participant = throwdown.participants.find(p => p.user.toString() === userId);
     if (!participant) {
       console.log('[ADD SCORE] Participant not found:', userId);
       return res.status(404).json({ message: 'Participant not found' });
     }
 
-    // Validate score based on scoreType
-    let scoreType = throwdown.scoreType;
-    if (!scoreType) {
-      await throwdown.populate('scoreType');
-      scoreType = throwdown.scoreType;
-    }
-    if (!scoreType) {
-      console.log('[ADD SCORE] Score type not found for throwdown:', id);
-      return res.status(400).json({ message: 'Score type not found for throwdown' });
+    // Validate scores array length matches workouts
+    if (scores.length !== throwdown.workouts.length) {
+      return res.status(400).json({ message: 'Scores array length must match number of workouts' });
     }
 
-    // ScoreType logic: rounds-reps, time, reps
-    let scoreTypeName = '';
-    if (scoreType && typeof (scoreType as any).name === 'string') {
-      scoreTypeName = ((scoreType as any).name as string).toLowerCase();
-    }
-    if (scoreTypeName === 'rounds-reps') {
-      // Expect score = { rounds: number, reps: number }
-      if (
-        typeof score !== 'object' ||
-        typeof score.rounds !== 'number' ||
-        typeof score.reps !== 'number'
-      ) {
-        console.log('[ADD SCORE] Invalid rounds-reps score:', score);
-        return res.status(400).json({ message: 'Score must include rounds and reps as numbers' });
+    // Validate and assign each score
+    participant.scores = [];
+    for (let i = 0; i < throwdown.workouts.length; i++) {
+      const workout = throwdown.workouts[i];
+      const scoreType = workout.scoreType;
+      const score = scores[i];
+      let scoreTypeName = '';
+      if (scoreType && typeof (scoreType as any).name === 'string') {
+        scoreTypeName = ((scoreType as any).name as string).toLowerCase();
       }
-      participant.score = { rounds: score.rounds, reps: score.reps };
-    } else if (scoreTypeName === 'time') {
-      // Expect score = { time: number }
-      if (
-        typeof score !== 'object' ||
-        typeof score.time !== 'number'
-      ) {
-        console.log('[ADD SCORE] Invalid time score:', score);
-        return res.status(400).json({ message: 'Score must include time as a number' });
+      // ScoreType logic: rounds-reps, time, reps, lbs
+      if (scoreTypeName === 'rounds-reps') {
+        if (
+          typeof score !== 'object' ||
+          typeof score.rounds !== 'number' ||
+          typeof score.reps !== 'number'
+        ) {
+          return res.status(400).json({ message: `Score for workout ${i + 1} must include rounds and reps as numbers` });
+        }
+        participant.scores[i] = { rounds: score.rounds, reps: score.reps };
+      } else if (scoreTypeName === 'time') {
+        if (
+          typeof score !== 'object' ||
+          typeof score.time !== 'number'
+        ) {
+          return res.status(400).json({ message: `Score for workout ${i + 1} must include time as a number` });
+        }
+        participant.scores[i] = { time: score.time };
+      } else if (scoreTypeName === 'reps') {
+        if (
+          typeof score !== 'object' ||
+          typeof score.reps !== 'number'
+        ) {
+          return res.status(400).json({ message: `Score for workout ${i + 1} must include reps as a number` });
+        }
+        participant.scores[i] = { reps: score.reps };
+      } else if (scoreTypeName === 'lbs') {
+        if (
+          typeof score !== 'object' ||
+          typeof score.lbs !== 'number'
+        ) {
+          return res.status(400).json({ message: `Score for workout ${i + 1} must include lbs as a number` });
+        }
+        participant.scores[i] = { lbs: score.lbs };
+      } else {
+        participant.scores[i] = score;
       }
-      participant.score = { time: score.time };
-    } else if (scoreTypeName === 'reps') {
-      // Expect score = { reps: number }
-      if (
-        typeof score !== 'object' ||
-        typeof score.reps !== 'number'
-      ) {
-        console.log('[ADD SCORE] Invalid reps score:', score);
-        return res.status(400).json({ message: 'Score must include reps as a number' });
-      }
-      participant.score = { reps: score.reps };
-    } else if (scoreTypeName === 'lbs') {
-      // Expect score = { lbs: number }
-      if (
-        typeof score !== 'object' ||
-        typeof score.lbs !== 'number'
-      ) {
-        console.log('[ADD SCORE] Invalid lbs score:', score);
-        return res.status(400).json({ message: 'Score must include lbs as a number' });
-      }
-      participant.score = { lbs: score.lbs };
-    } else {
-      // Fallback: just store score as-is
-      participant.score = score;
     }
 
     try {
       await throwdown.save();
-      console.log('[ADD SCORE] Score added successfully');
-      res.json({ message: 'Score added', throwdown });
+      console.log('[ADD SCORE] Scores added successfully');
+      res.json({ message: 'Scores added', throwdown });
     } catch (saveErr) {
       console.error('[ADD SCORE] Error saving throwdown:', saveErr);
-      res.status(400).json({ message: 'Error saving score to database' });
+      res.status(400).json({ message: 'Error saving scores to database' });
     }
   } catch (err) {
     console.error('[ADD SCORE ERROR]', err);
